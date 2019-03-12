@@ -22,9 +22,9 @@ int MASTERID = 0;
 int main(int argc, char *argv[])
 {
 	//+++ Declaration of variables +++
-	int matrixA[10][10];
-	int matrixB[10][10];
-	int matrixR[10][10];
+	int matrixA[N][N];
+	int matrixB[N][N];
+	int matrixR[N][N];
 	int filaActualMatriz;
 
 	//MPI
@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 	int resourceProcessId;
 	int procesIdDestination; //#Process to which the Master sends the data
 	int numRowTag;
+	MPI_Status status;
 
 	//+++ Variables initialization +++
 
@@ -81,6 +82,10 @@ int main(int argc, char *argv[])
 	*/
 	MPI_Comm_size(MPI_COMM_WORLD, &totalProcessorsInComm);
 
+	//--------
+	printf("#Total of processors in current communicator: %i \n", totalProcessorsInComm);
+	//--------
+
 	//------------ MASTER WORK ----------
 	if (resourceProcessId == MASTERID)
 	{
@@ -90,7 +95,7 @@ int main(int argc, char *argv[])
 		while (filaActualMatriz < N)
 		{
 			//Send equal number of Rows to each process
-			if ( procesIdDestination < totalProcessorsInComm )
+			if (procesIdDestination < (totalProcessorsInComm - 1))
 			{
 				procesIdDestination++;
 
@@ -111,8 +116,11 @@ int main(int argc, char *argv[])
 			* comm = Communicator throught wich the communication is performed -> MPI_COMM_WORLD [MPI CONSTANT]
 			*/
 
+			printf("Data sent to process #%i\n", procesIdDestination);
 			//Send actual row from matrixA
-			//MPI_Send(&N, 1, MPI_INT, procesIdDestination, 0, MPI_COMM_WORLD);
+			MPI_Send(matrixA[filaActualMatriz], N, MPI_INT, procesIdDestination, numRowTag, MPI_COMM_WORLD);
+			//Send all matrix B
+			MPI_Send(matrixB, N*N, MPI_INT, procesIdDestination, numRowTag, MPI_COMM_WORLD);
 
 			filaActualMatriz++;
 
@@ -121,25 +129,39 @@ int main(int argc, char *argv[])
 		printf("Master reciving the work of their workers!\n");
 
 	}//End if Master work*/
-	//----------- END MASTER WORK -------
+	 //----------- END MASTER WORK -------
 
-	//------------ WORKERS WORK ----------
+	 //------------ WORKERS WORK ----------
 	if (resourceProcessId != MASTERID)
 	{
-		//Recieve actual row from matrixA
-		//MPI_Recv(matrixA[filaActualMatriz], N, MPI_INT, procesIdDestination, numRowTag, MPI_COMM_WORLD);
+		/*
+		* Recieve at most the count of elements,
+		* data = data buffer -> matrixA[#Row] [ponter* memory]
+		* count = # of elements that are expected to be recieved ->N [int]
+		* dataType -> MPI_INT [MPI DATA TYPE]
+		* source = # of processor that will get the data -> (MPI_ANY_SOURCE could be used) [int]
+		* tag = # Retrieve only the data with the sepecified tag-> MPI_ANY_TAG [int]
+		* comm = Communicator throught wich the communication is performed -> MPI_COMM_WORLD [MPI CONSTANT]
+		* status = MPI_Stauts object that recieves info that was sent F/E: source (MPI_SOURCE) , la etiqueta (MPI_TAG) -> MPI_TAG
+		*/
+
+		//Retrieve actual row from matrixA
+		MPI_Recv(&matrixA, N, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		printf("# Fila recibida: %i mandada por el prcoeso #%i \n ", status.MPI_TAG, status.MPI_SOURCE);
+		//Retrieve all matrixB
+		MPI_Recv(&matrixB, N*N, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
 	}//End if workers work
-	//----------- END WORKERS WORK -------
+	 //----------- END WORKERS WORK -------
 
-	//+++ Output data +++
+	 //+++ Output data +++
 
-	//Ends the prallel communication between processors(After this processors
-	//can not continue sending messages)
+	 //Ends the prallel communication between processors(After this processors
+	 //can not continue sending messages)
 	MPI_Finalize();
 
 	//+++ End of program +++
-	printf("End of program V2");
+	printf("End of program V3\n");
 
 	//Indicates to the OS that all ends ok
 	return 0;
