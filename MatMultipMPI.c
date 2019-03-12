@@ -127,6 +127,25 @@ int main(int argc, char *argv[])
 		}//Fin while
 
 		printf("Master reciving the work of their workers!\n");
+		for (int i = 1; i < N; i++)
+		{
+			/*Recive result matrix sent from any worker with the tag7*/
+			MPI_Recv(&matrixR, N*N, MPI_INT, MPI_ANY_SOURCE, 7, MPI_COMM_WORLD, &status);
+		}//End for 1
+
+		printf("SHOW FINAL RESULTS:\n");
+		for (int i = 0; i < N; i++)
+		{
+			printf("%i)", i);
+			for (int j = 0; j < N; j++)
+			{
+				printf("%i ", matrixR[i][j]);
+			}//End for 3	
+
+			printf("\n");
+
+		}//End for 2	
+
 
 	}//End if Master work*/
 	 //----------- END MASTER WORK -------
@@ -139,25 +158,46 @@ int main(int argc, char *argv[])
 		* data = data buffer -> matrixA[#Row] [ponter* memory]
 		* count = # of elements that are expected to be recieved ->N [int]
 		* dataType -> MPI_INT [MPI DATA TYPE]
-		* source = # of processor that will get the data -> (MPI_ANY_SOURCE could be used) [int]
+		* source = # of processor that will get the data -> (MPI_ANY_SOURCE could be used) MASTERID [int]
 		* tag = # Retrieve only the data with the sepecified tag-> MPI_ANY_TAG [int]
 		* comm = Communicator throught wich the communication is performed -> MPI_COMM_WORLD [MPI CONSTANT]
 		* status = MPI_Stauts object that recieves info that was sent F/E: source (MPI_SOURCE) , la etiqueta (MPI_TAG) -> MPI_TAG
 		*/
 
 		//Retrieve actual row from matrixA
-		MPI_Recv(&matrixA, N, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv(&matrixA[filaActualMatriz], N, MPI_INT, MASTERID, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 		printf("# Fila recibida: %i mandada por el prcoeso #%i \n ", status.MPI_TAG, status.MPI_SOURCE);
 		//Retrieve all matrixB
-		MPI_Recv(&matrixB, N*N, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+		MPI_Recv(&matrixB, N*N, MPI_INT, MASTERID, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
+		/*Start calauclations of result matrix*/
+		for (int i = 0; i < N; i++)
+		{
+			for (int j = 0; j < N; j++)
+			{
+				for (int k = 0; k < N; k++)
+				{
+					matrixR[i][j] = matrixR[i][j] + matrixA[i][j] * matrixB[j][i];
+
+				}//End for 2.3	
+
+			}//End for 2.2	
+
+		}//End for 2.1	
 
 	}//End if workers work
-	 //----------- END WORKERS WORK -------
 
-	 //+++ Output data +++
+	 //-------+-----+
+	printf("Retrieve results to master!\n");
+	//Send al result matrix from actual resource proces ID to the master witht tag 7
+	MPI_Send(matrixR, N*N, MPI_INT, resourceProcessId, 7, MPI_COMM_WORLD);
 
-	 //Ends the prallel communication between processors(After this processors
-	 //can not continue sending messages)
+	//----------- END WORKERS WORK -------
+
+	//+++ Output data +++
+
+	//Ends the prallel communication between processors(After this processors
+	//can not continue sending messages)
 	MPI_Finalize();
 
 	//+++ End of program +++
@@ -167,4 +207,5 @@ int main(int argc, char *argv[])
 	return 0;
 
 }//End main function
+
 
